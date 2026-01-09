@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pocket Actions Layer Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            base: '#f6f3ed',
+            frame: '#eae6de',
+            ink: '#1f1f1f',
+            cloud: '#fdfbf7',
+            accent: '#a1a5b7',
+            signal: '#7c9af2',
+          },
+          boxShadow: {
+            soft: '0 10px 40px rgba(0,0,0,0.08)',
+            ring: '0 0 0 1px rgba(0,0,0,0.06), 0 20px 45px rgba(0,0,0,0.10)',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(124, 154, 242, 0.08), transparent 35%),
+                  radial-gradient(circle at 80% 0%, rgba(0, 0, 0, 0.04), transparent 30%),
+                  #f6f3ed;
+      color: #1f1f1f;
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body class="antialiased">
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useMemo, useState } = React;
+
+    const recordingData = {
+      title: "AI Work Session · Jan 9",
+      summary: "Discussed Q1 launch for Pocket PAL. Decided to prioritize the sales pod rollout, align messaging with 'hands-free follow-through', and tighten CRM hygiene playbook for the beta cohort.",
+      actionItems: [
+        { title: "Send recap with PAL clips to pilot team", owner: "Maya", due: "Today" },
+        { title: "Draft Notion meeting page for Monday standup", owner: "Leo", due: "Tomorrow" },
+        { title: "Create follow-up tasks for sales pod onboarding", owner: "Amir", due: "Next Tue" },
+      ],
+      insights: [
+        "3 follow-ups detected · 2 owners",
+        "Confidence: 92%",
+      ],
+    };
+
+    const defaultRules = [
+      { key: "autoTasks", label: "Auto-create tasks when “follow up” is detected", enabled: true },
+      { key: "respectOwners", label: "Respect owner mapping from transcript", enabled: true },
+      { key: "notifySlack", label: "Post digest to Slack when tasks > 2", enabled: false },
+    ];
+
+    const baseIntegrations = [
+      { key: "notion", name: "Notion", desc: "Structured meeting page with summary + decisions", highlight: true },
+      { key: "tasks", name: "Task Manager", desc: "Action items with owners and due dates" },
+      { key: "slack", name: "Slack", desc: "Channel update with recap + next moves" },
+      { key: "crm", name: "CRM (optional)", desc: "Attach summary to active opportunity" },
+    ];
+
+    function Pill({ children }) {
+      return (
+        <span className="px-3 py-1 rounded-full bg-cloud text-sm text-ink border border-frame">
+          {children}
+        </span>
+      );
+    }
+
+    function ActionList({ items }) {
+      return (
+        <div className="space-y-3">
+          {items.map((item, idx) => (
+            <div key={idx} className="flex items-start gap-3 p-3 rounded-2xl bg-cloud border border-frame shadow-soft">
+              <div className="mt-1 h-2.5 w-2.5 rounded-full bg-signal" />
+              <div className="flex-1">
+                <div className="font-semibold text-ink">{item.title}</div>
+                <div className="text-sm text-accent">
+                  Owner: {item.owner} · Due: {item.due}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    function IntegrationToggle({ integration, enabled, onToggle }) {
+      return (
+        <div className={`p-4 rounded-2xl border transition-all cursor-pointer ${enabled ? "border-signal shadow-ring bg-white" : "border-frame bg-cloud shadow-soft"}`}
+             onClick={() => onToggle(integration.key)}>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-semibold text-ink">{integration.name}</div>
+              <div className="text-sm text-accent">{integration.desc}</div>
+            </div>
+            <div className={`w-12 h-7 rounded-full p-1 transition ${enabled ? "bg-signal" : "bg-frame"}`}>
+              <div className={`h-5 w-5 rounded-full bg-white shadow ${enabled ? "translate-x-5" : ""} transition-transform`} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function RulesPanel({ rules, onToggle }) {
+      return (
+        <div className="p-4 rounded-2xl bg-cloud border border-frame shadow-soft">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="font-semibold text-ink">Automation rules</div>
+              <div className="text-sm text-accent">Tweak how PAL executes the transcript</div>
+            </div>
+            <Pill>Live</Pill>
+          </div>
+          <div className="space-y-3">
+            {rules.map(rule => (
+              <div key={rule.key} className="flex items-start justify-between">
+                <div className="text-sm text-ink leading-tight">{rule.label}</div>
+                <button
+                  className={`w-11 h-6 rounded-full p-0.5 transition ${rule.enabled ? "bg-signal" : "bg-frame"}`}
+                  onClick={() => onToggle(rule.key)}
+                  aria-label={`Toggle ${rule.label}`}
+                >
+                  <div className={`h-5 w-5 rounded-full bg-white shadow ${rule.enabled ? "translate-x-5" : ""} transition-transform`} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function SummaryCard({ data }) {
+      return (
+        <div className="p-6 rounded-3xl bg-white border border-frame shadow-ring">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-accent">Recording complete</div>
+              <div className="text-2xl font-semibold text-ink mt-1">{data.title}</div>
+            </div>
+            <Pill>{data.insights.join(" · ")}</Pill>
+          </div>
+          <div className="space-y-5">
+            <div>
+              <div className="text-sm text-accent mb-2">AI Summary</div>
+              <div className="text-base text-ink leading-relaxed">{data.summary}</div>
+            </div>
+            <div>
+              <div className="text-sm text-accent mb-2">Action items</div>
+              <ActionList items={data.actionItems} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function PreviewPane({ selections, actionItems, summary }) {
+      const destinations = Object.entries(selections)
+        .filter(([, enabled]) => enabled)
+        .map(([key]) => key);
+
+      const rows = [
+        { label: "Summary", value: summary },
+        { label: "Tasks", value: `${actionItems.length} items with owners + due dates` },
+        { label: "Format", value: destinations.includes("notion") ? "Structured meeting page" : "Plain text" },
+      ];
+
+      return (
+        <div className="p-5 rounded-2xl bg-cloud border border-frame shadow-soft">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="font-semibold text-ink">Preview</div>
+              <div className="text-sm text-accent">How PAL will format outputs</div>
+            </div>
+            <Pill>{destinations.length} destinations</Pill>
+          </div>
+          <div className="space-y-3">
+            {rows.map((row, idx) => (
+              <div key={idx} className="flex items-start justify-between">
+                <div className="text-sm text-accent">{row.label}</div>
+                <div className="w-3/4 text-sm text-ink text-right">{row.value}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 p-3 rounded-xl bg-white border border-frame">
+            <div className="text-xs uppercase tracking-[0.2em] text-accent mb-2">Task payload</div>
+            <ul className="space-y-1 text-sm text-ink">
+              {actionItems.map((item, idx) => (
+                <li key={idx}>
+                  • {item.title} — {item.owner} ({item.due})
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      );
+    }
+
+    function Confirmation({ message, onRestart }) {
+      return (
+        <div className="p-8 rounded-3xl bg-white border border-frame shadow-ring text-center space-y-4">
+          <div className="text-sm uppercase tracking-[0.25em] text-accent">Pocket ran it</div>
+          <div className="text-3xl font-semibold text-ink">{message}</div>
+          <div className="text-sm text-accent">Notion updated · Tasks synced · Slack notified</div>
+          <button
+            className="mt-2 inline-flex items-center justify-center px-4 py-2 rounded-full bg-ink text-white hover:opacity-90 transition"
+            onClick={onRestart}
+          >
+            Run again
+          </button>
+        </div>
+      );
+    }
+
+    function App() {
+      const [step, setStep] = useState(1);
+      const [integrations, setIntegrations] = useState({
+        notion: true,
+        tasks: true,
+        slack: true,
+        crm: false,
+      });
+      const [rules, setRules] = useState(defaultRules);
+
+      const confirmationText = useMemo(() => {
+        const enabled = Object.entries(integrations)
+          .filter(([, on]) => on)
+          .map(([key]) => key);
+        const pieces = [];
+        if (enabled.includes("tasks")) pieces.push("3 tasks created");
+        if (enabled.includes("notion")) pieces.push("Notion updated");
+        if (enabled.includes("slack")) pieces.push("Slack notified");
+        if (enabled.includes("crm")) pieces.push("CRM linked");
+        return pieces.join(" · ") || "Pocket is idle (no outputs selected)";
+      }, [integrations]);
+
+      const toggleIntegration = (key) => {
+        setIntegrations((prev) => ({ ...prev, [key]: !prev[key] }));
+      };
+
+      // Product logic: rules drive how PAL maps transcript to destinations
+      const toggleRule = (key) => {
+        setRules((prev) =>
+          prev.map((rule) =>
+            rule.key === key ? { ...rule, enabled: !rule.enabled } : rule
+          )
+        );
+      };
+
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6">
+          <div className="max-w-5xl w-full space-y-6">
+            <div className="flex items-center gap-3 text-xs uppercase tracking-[0.25em] text-accent">
+              <span className="h-2 w-2 rounded-full bg-signal"></span>
+              Pocket Actions Layer · PAL
+            </div>
+
+            {step === 1 && (
+              <div className="space-y-4">
+                <SummaryCard data={recordingData} />
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-accent">Pocket turned your recording into structured work.</div>
+                  <button
+                    className="px-5 py-2.5 rounded-full bg-ink text-white shadow-soft hover:opacity-90 transition"
+                    onClick={() => setStep(2)}
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="grid md:grid-cols-2 gap-5">
+                <div className="space-y-4">
+                  <div className="p-6 rounded-3xl bg-white border border-frame shadow-ring">
+                    <div className="text-sm uppercase tracking-[0.25em] text-accent mb-2">
+                      What should Pocket do with this?
+                    </div>
+                    <div className="text-2xl font-semibold text-ink mb-4">Execution layer</div>
+                    <div className="space-y-3">
+                      {baseIntegrations.map((integration) => (
+                        <IntegrationToggle
+                          key={integration.key}
+                          integration={integration}
+                          enabled={integrations[integration.key]}
+                          onToggle={toggleIntegration}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-3 mt-5">
+                      <button
+                        className="px-4 py-2 rounded-full bg-ink text-white hover:opacity-90 transition"
+                        onClick={() => setStep(3)}
+                      >
+                        Run Pocket Action
+                      </button>
+                      <button
+                        className="px-4 py-2 rounded-full border border-frame text-ink bg-cloud hover:border-ink/20 transition"
+                        onClick={() => setStep(1)}
+                      >
+                        Back
+                      </button>
+                    </div>
+                  </div>
+
+                  <RulesPanel rules={rules} onToggle={toggleRule} />
+                </div>
+
+                <div className="space-y-4">
+                  <PreviewPane
+                    selections={integrations}
+                    actionItems={recordingData.actionItems}
+                    summary={recordingData.summary}
+                  />
+                  <div className="p-5 rounded-2xl bg-white border border-frame shadow-soft">
+                    <div className="text-sm uppercase tracking-[0.25em] text-accent mb-2">AI mapping</div>
+                    <div className="text-sm text-ink leading-relaxed">
+                      PAL will split transcript into: <strong>Summary</strong> (Notion & Slack), <strong>Action items</strong> (Task Manager with owners), and <strong>Context</strong> (CRM note).
+                      Rules above adjust how aggressively tasks are created and how owners are kept.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <Confirmation message={confirmationText} onRestart={() => setStep(1)} />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
