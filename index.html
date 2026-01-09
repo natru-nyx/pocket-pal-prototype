@@ -73,7 +73,7 @@
       { key: "notion", name: "Notion", desc: "Structured meeting page with summary + decisions", highlight: true },
       { key: "tasks", name: "Task Manager", desc: "Action items with owners and due dates", primary: true },
       { key: "slack", name: "Slack", desc: "Channel update with recap + next moves" },
-      { key: "crm", name: "CRM (optional)", desc: "Attach summary to active opportunity", disabled: true },
+      { key: "crm", name: "CRM (optional)", desc: "Attach summary to active opportunity" },
     ];
 
     function Pill({ children }) {
@@ -104,22 +104,19 @@
 
     function IntegrationToggle({ integration, enabled, onToggle }) {
       const isPrimary = integration.primary;
-      const isDisabled = integration.disabled;
+      const isSoft = integration.key === "crm";
 
       const cardClasses = [
-        "rounded-2xl border transition-all",
-        isDisabled ? "opacity-60 cursor-not-allowed bg-cloud border-frame" : "cursor-pointer",
-        enabled && !isDisabled ? "border-signal shadow-ring bg-white" : "border-frame bg-cloud shadow-soft",
+        "rounded-2xl border transition-all cursor-pointer",
+        enabled ? "border-signal shadow-ring bg-white" : "border-frame bg-cloud shadow-soft",
         isPrimary ? "p-5" : "p-4",
+        isSoft && !enabled ? "opacity-80" : "",
       ].join(" ");
 
       return (
         <div
           className={cardClasses}
-          onClick={() => {
-            if (isDisabled) return;
-            onToggle(integration.key);
-          }}
+          onClick={() => onToggle(integration.key)}
         >
           <div className="flex items-center justify-between">
             <div>
@@ -128,11 +125,11 @@
               {isPrimary && (
                 <div className="mt-1 text-xs text-accent">Primary action</div>
               )}
-              {isDisabled && (
+              {isSoft && (
                 <div className="mt-1 text-xs text-accent">CRM handoff (optional)</div>
               )}
             </div>
-            <div className={`w-12 h-7 rounded-full p-1 transition ${enabled && !isDisabled ? "bg-signal" : "bg-frame"}`}>
+            <div className={`w-12 h-7 rounded-full p-1 transition ${enabled ? "bg-signal" : "bg-frame"}`}>
               <div className={`h-5 w-5 rounded-full bg-white shadow ${enabled ? "translate-x-5" : ""} transition-transform`} />
             </div>
           </div>
@@ -330,7 +327,7 @@
                     <div className="text-sm uppercase tracking-[0.25em] text-accent mb-2">
                       What should Pocket do with this?
                     </div>
-                    <div className="text-2xl font-semibold text-ink mb-4">Execution layer</div>
+                    <div className="text-2xl font-semibold text-ink mb-4">Pocket Actions</div>
                     <div className="space-y-3">
                       {baseIntegrations.map((integration) => (
                         <IntegrationToggle
