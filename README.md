@@ -35,3 +35,4 @@ vercel login
 vercel --prod
 ```
 Accept defaults; Vercel will detect the static root.
+"# pocket-pal-prototype" 
