@@ -1,38 +1,21 @@
-# Pocket Actions Layer (PAL) Prototype
+# Pocket Actions Layer (PAL) – Prototype
 
-Single-page, front-end only prototype for Pocket’s “Actions Layer,” turning a finished voice recording into structured outputs (Notion, Tasks, Slack, CRM) with mocked AI data.
+A clickable product prototype for an "Actions Layer" in Pocket: once a voice recording finishes, PAL turns it into structured follow-ups – a Notion page, a task list, a Slack update and CRM notes – that you can review, edit inline and send in one pass.
+
+**Live demo:** https://pocket-pal-prototype.vercel.app
+
+## What to look at
+
+- The flow from a finished recording → suggested actions → review → push to tools
+- Inline editing of generated tasks before anything is sent
+- Per-destination toggles (e.g. turning CRM sync on/off)
+
+All AI output in the prototype is mocked; nothing is sent anywhere.
 
 ## Run locally
-Open `index.html` in your browser. Dependencies are CDN-only (React 18 UMD, Tailwind via CDN).
 
-## Deploying
-### GitHub
-1. Initialize and commit:
-   ```bash
-   git init
-   git add index.html README.md vercel.json
-   git commit -m "Add PAL prototype"
-   ```
-2. Create a repo on GitHub (or provide an existing one) and push:
-   ```bash
-   git remote add origin https://github.com/<your-org>/<repo>.git
-   git push -u origin main
-   ```
+It's a single static page with no build step – open `index.html` in a browser. React 18 and Tailwind load from CDN.
 
-### Vercel (static)
-This is a static site; Vercel can deploy it directly from GitHub:
-1. Import the GitHub repo in Vercel, select `Framework Preset: Other`.
-2. Set:
-   - Root directory: `/`
-   - Build command: _None_
-   - Output directory: `/`
-3. Deploy. Vercel will serve `index.html` at the project root.
+## Note
 
-If you prefer CLI:
-```bash
-npm i -g vercel
-vercel login
-vercel --prod
-```
-Accept defaults; Vercel will detect the static root.
-"# pocket-pal-prototype" 
+Independent product concept; not affiliated with or endorsed by Pocket.
